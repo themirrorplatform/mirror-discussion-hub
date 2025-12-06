@@ -19,6 +19,14 @@ interface ReactionBarProps {
   appreciateCount?: number;
   challengeCount?: number;
   savedCount?: number;
+
+  // Initial user reactions state (from database)
+  userReactions?: {
+    reflect: boolean;
+    appreciate: boolean;
+    challenge: boolean;
+    save: boolean;
+  };
 }
 
 export function ReactionBar({
@@ -28,6 +36,7 @@ export function ReactionBar({
   appreciateCount = 0,
   challengeCount = 0,
   savedCount = 0,
+  userReactions,
 }: ReactionBarProps) {
   const [counts, setCounts] = useState({
     reflect: reflectCount,
@@ -36,13 +45,15 @@ export function ReactionBar({
     save: savedCount,
   });
 
-  // whether *this* user has toggled each reaction in this session
-  const [active, setActive] = useState<Record<ReactionKind, boolean>>({
-    reflect: false,
-    appreciate: false,
-    challenge: false,
-    save: false,
-  });
+  // whether *this* user has toggled each reaction
+  const [active, setActive] = useState<Record<ReactionKind, boolean>>(
+    userReactions ?? {
+      reflect: false,
+      appreciate: false,
+      challenge: false,
+      save: false,
+    }
+  );
 
   const [busyKind, setBusyKind] = useState<ReactionKind | null>(null);
 

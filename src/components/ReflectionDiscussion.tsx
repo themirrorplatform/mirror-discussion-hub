@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Mirrorbacks } from "../lib/mirrorApi";
 import { ReflectionActionsIconOnly } from "./ui/ReflectionCardActions";
+import { sanitizeText } from "../lib/sanitize";
 
 interface ReflectionDiscussionProps {
   reflectionId: number;
@@ -159,7 +160,7 @@ export function ReflectionDiscussion({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-white truncate max-w-[40%]">
-                          {mb.author?.display_name ?? "Unknown"}
+                          {sanitizeText(mb.author?.display_name ?? "Unknown")}
                         </span>
                         {mb.author?.role && (
                           <span className="text-[10px] text-[#BDBDBD]">
@@ -188,7 +189,7 @@ export function ReflectionDiscussion({
                       </div>
 
                       <p className="text-xs text-[#D4D4D4] leading-snug whitespace-pre-wrap">
-                        {mb.content}
+                        {sanitizeText(mb.content)}
                       </p>
                     </div>
                   </div>

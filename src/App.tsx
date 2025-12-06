@@ -121,7 +121,7 @@ export default function App() {
         Reflections.list(),
         Wishlists.list(),
         EventsApi.list(),
-        Profiles.leaderboard(),
+        Profiles.leaderboardWithProfiles(),
       ]);
 
       // Reflections
@@ -138,12 +138,25 @@ export default function App() {
               r.author?.avatar_url ??
               "https://ui-avatars.com/api/?name=Mirror",
           },
-          authorId: r.author?.id ?? null, //
+          authorId: r.author?.id ?? null,
           timestamp: r.created_at
             ? new Date(r.created_at).toLocaleString()
             : "",
         }));
-        setReflections(normalizedReflections);
+
+        // Load reactions for all reflections
+        const reflectionIds = normalizedReflections.map((r: any) => r.id);
+        if (reflectionIds.length > 0) {
+          const { data: reactionsData } = await Reactions.list(reflectionIds);
+          const withReactions = mergeReactionsWithReflections(
+            normalizedReflections,
+            reactionsData ?? [],
+            currentUser?.id ?? null
+          );
+          setReflections(withReactions);
+        } else {
+          setReflections(normalizedReflections);
+        }
       }
 
       // Wishlists
@@ -229,11 +242,13 @@ export default function App() {
         const normalizedLeaderboard = (leaderboardData ?? []).map(
           (row: any, idx: number) => ({
             rank: idx + 1,
-            name: `Member ${String(row.user_id).slice(0, 6)}`,
+            name: row.profile?.display_name || "Anonymous User",
             avatar:
-              "https://images.unsplash.com/photo-1557053910-d9eadeed1c58?auto=format&fit=crop&w=100&q=80",
+              row.profile?.avatar_url ||
+              "https://ui-avatars.com/api/?name=" +
+                encodeURIComponent(row.profile?.display_name || "User"),
             xp: row.score ?? 0,
-            role: "Witness",
+            role: row.profile?.role || "Witness",
           })
         );
         setLeaderboard(normalizedLeaderboard);
@@ -368,42 +383,46 @@ export default function App() {
   }
 
 
-  /* ---------- Static sample videos ---------- */
+  /* ---------- Video reflections from database ---------- */
 
-  const videos = [
-    {
-      author: {
-        name: "Dr. James Foster",
-        role: "Guide",
-        avatar:
-          "https://images.unsplash.com/photo-1523287281576-5b596107a6ae?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=100",
-      },
-      title: "The Mirror Principle: Seeing Yourself in Others",
-      thumbnail:
-        "https://images.unsplash.com/photo-1631551437792-ae5a0fb41c49?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600",
-      duration: "12:34",
-      timestamp: "3 hours ago",
-      reflectCount: 18,
-      appreciateCount: 89,
-      challengeCount: 3,
-    },
-    {
-      author: {
-        name: "Elena Martinez",
-        role: "Witness",
-        avatar:
-          "https://images.unsplash.com/photo-1557053910-d9eadeed1c58?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=100",
-      },
-      title: "Reflections on Impermanence",
-      thumbnail:
-        "https://images.unsplash.com/photo-1750860344213-b8cf669fef84?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600",
-      duration: "8:15",
-      timestamp: "1 day ago",
-      reflectCount: 12,
-      appreciateCount: 67,
-      challengeCount: 2,
-    },
-  ];
+  // Filter reflections that have video URLs
+  const videos = reflections
+    .filter((r: any) => r.video_url)
+    .map((r: any) => ({
+      author: r.author,
+      title: r.title,
+      thumbnail: r.video_url ? getThumbnailFromVideoUrl(r.video_url) : "",
+      duration: "0:00", // Could be extracted from video metadata
+      timestamp: r.timestamp,
+      reflectCount: r.reflectCount ?? 0,
+      appreciateCount: r.appreciateCount ?? 0,
+      challengeCount: r.challengeCount ?? 0,
+      video_url: r.video_url,
+    }));
+
+  // Helper to extract thumbnail from video URL (YouTube, Vimeo, etc.)
+  function getThumbnailFromVideoUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+
+      // YouTube
+      if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
+        const videoId = urlObj.searchParams.get('v') || urlObj.pathname.slice(1);
+        return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      }
+
+      // Vimeo
+      if (urlObj.hostname.includes('vimeo.com')) {
+        // Vimeo requires API call for thumbnail, using placeholder
+        return "https://images.unsplash.com/photo-1631551437792-ae5a0fb41c49?auto=format&fit=crop&w=600&q=80";
+      }
+
+      // Default fallback
+      return "https://images.unsplash.com/photo-1631551437792-ae5a0fb41c49?auto=format&fit=crop&w=600&q=80";
+    } catch {
+      return "https://images.unsplash.com/photo-1631551437792-ae5a0fb41c49?auto=format&fit=crop&w=600&q=80";
+    }
+  }
 
    /* ---------- Render ---------- */
 

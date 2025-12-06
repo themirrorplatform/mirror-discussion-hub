@@ -1,5 +1,6 @@
 import { X, Lightbulb, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { validateTitle, validateContent } from "../lib/sanitize";
 
 interface WishlistComposerProps {
   isOpen: boolean;
@@ -17,29 +18,51 @@ export function WishlistComposer({ isOpen, onClose, onSubmit }: WishlistComposer
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [reasoning, setReasoning] = useState("");
+  const [error, setError] = useState("");
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setError("");
+
+    // Validate title
+    const titleValidation = validateTitle(title);
+    if (!titleValidation.isValid) {
+      setError(titleValidation.error || "Invalid title");
+      return;
+    }
+
+    // Validate description
+    const descValidation = validateContent(description, 2000); // Wishlist desc max 2000
+    if (!descValidation.isValid) {
+      setError(descValidation.error || "Invalid description");
+      return;
+    }
+
+    // Validate category
+    if (!category) {
+      setError("Please select a category");
+      return;
+    }
+
     const wishlistData = {
-      title,
-      description,
+      title: titleValidation.sanitized,
+      description: descValidation.sanitized,
       category,
-      reasoning: reasoning || undefined,
+      reasoning: reasoning ? reasoning.trim() : undefined,
     };
 
     // Handle submission
-    console.log("Wishlist submitted:", wishlistData);
     onSubmit?.(wishlistData);
-    
+
     // Reset form
     setTitle("");
     setDescription("");
     setCategory("");
     setReasoning("");
-    
+    setError("");
+
     onClose();
   };
 
@@ -158,11 +181,18 @@ export function WishlistComposer({ isOpen, onClose, onSubmit }: WishlistComposer
             <div>
               <p className="text-sm text-white mb-1">Community-Driven Features</p>
               <p className="text-xs text-[#BDBDBD]">
-                Once submitted, other members can echo your wishlist to show support. 
+                Once submitted, other members can echo your wishlist to show support.
                 Top-echoed items help prioritize what The Mirror builds next.
               </p>
             </div>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
 
           {/* Submit Button */}
           <button
