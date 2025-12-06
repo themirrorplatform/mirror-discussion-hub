@@ -165,6 +165,27 @@ export const Mirrorbacks = {
 export type ReactionKind = "reflect" | "appreciate" | "challenge" | "save";
 
 export const Reactions = {
+  // Get all reactions (optionally filtered by reflection IDs)
+  list(reflectionIds?: number[]) {
+    let query = supabase
+      .from("reactions")
+      .select("id, reflection_id, user_id, kind, created_at");
+
+    if (reflectionIds && reflectionIds.length > 0) {
+      query = query.in("reflection_id", reflectionIds);
+    }
+
+    return query;
+  },
+
+  // Get reactions for a specific reflection
+  forReflection(reflectionId: number) {
+    return supabase
+      .from("reactions")
+      .select("id, user_id, kind, created_at")
+      .eq("reflection_id", reflectionId);
+  },
+
   add(reflectionId: number, userId: string, kind: ReactionKind) {
     return supabase.from("reactions").insert({
       reflection_id: reflectionId,

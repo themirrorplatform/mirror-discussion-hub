@@ -209,9 +209,12 @@ export function ReflectionCard(props: ReflectionCardProps) {
 
       {/* Reactions */}
       <ReactionBar
+        reflectionId={id}
+        currentUserId={user?.id}
         reflectCount={reflectCount}
         appreciateCount={appreciateCount}
         challengeCount={challengeCount}
+        userReactions={(props as any).userReactions}
       />
 
       {/* Discussion section */}
