@@ -7,6 +7,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState, type ComponentType } from "react";
+import { sanitizeText } from "../lib/sanitize";
 
 export type WishlistStatus = "newest" | "top-echoed" | "implemented";
 
@@ -182,19 +183,19 @@ export function WishlistCard({
           </div>
 
           {/* Title + Description */}
-          <h3 className="text-white mb-2">{title}</h3>
-          <p className="text-[#BDBDBD] mb-4">{description}</p>
+          <h3 className="text-white mb-2">{sanitizeText(title)}</h3>
+          <p className="text-[#BDBDBD] mb-4">{sanitizeText(description)}</p>
 
           {/* Author */}
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full overflow-hidden">
               <img
                 src={author.avatar}
-                alt={author.name}
+                alt={sanitizeText(author.name)}
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="text-sm text-[#BDBDBD]">{author.name}</span>
+            <span className="text-sm text-[#BDBDBD]">{sanitizeText(author.name)}</span>
           </div>
         </div>
       </div>

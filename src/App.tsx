@@ -121,7 +121,7 @@ export default function App() {
         Reflections.list(),
         Wishlists.list(),
         EventsApi.list(),
-        Profiles.leaderboard(),
+        Profiles.leaderboardWithProfiles(),
       ]);
 
       // Reflections
@@ -229,11 +229,13 @@ export default function App() {
         const normalizedLeaderboard = (leaderboardData ?? []).map(
           (row: any, idx: number) => ({
             rank: idx + 1,
-            name: `Member ${String(row.user_id).slice(0, 6)}`,
+            name: row.profile?.display_name || "Anonymous User",
             avatar:
-              "https://images.unsplash.com/photo-1557053910-d9eadeed1c58?auto=format&fit=crop&w=100&q=80",
+              row.profile?.avatar_url ||
+              "https://ui-avatars.com/api/?name=" +
+                encodeURIComponent(row.profile?.display_name || "User"),
             xp: row.score ?? 0,
-            role: "Witness",
+            role: row.profile?.role || "Witness",
           })
         );
         setLeaderboard(normalizedLeaderboard);

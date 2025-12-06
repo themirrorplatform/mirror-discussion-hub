@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { X, Upload, Camera } from "lucide-react";
+import { validateImageFile } from "../lib/sanitize";
+import { Profiles } from "../lib/mirrorApi";
+import supabase from "../lib/supabaseClient";
 
 interface ProfileEditProps {
   user: any | null;
@@ -79,14 +82,34 @@ export function ProfileEdit({
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
+
+    if (file) {
+      const validation = validateImageFile(file);
+      if (!validation.isValid) {
+        setError(validation.error || "Invalid file");
+        return;
+      }
+    }
+
     setAvatarFile(file);
     setAvatarPreview(file ? URL.createObjectURL(file) : null);
+    setError(null);
   }
 
   function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
+
+    if (file) {
+      const validation = validateImageFile(file);
+      if (!validation.isValid) {
+        setError(validation.error || "Invalid file");
+        return;
+      }
+    }
+
     setBannerFile(file);
     setBannerPreview(file ? URL.createObjectURL(file) : null);
+    setError(null);
   }
 
   /* ---------- Save ---------- */
@@ -99,24 +122,79 @@ export function ProfileEdit({
     setError(null);
 
     try {
-      // In a real implementation, you'd upload files to Supabase Storage
-      // and update the profile in the database
-      
-      const updatedProfile = {
+      let newAvatarUrl = avatarUrl;
+      let newBannerUrl = bannerUrl;
+
+      // Upload avatar to Supabase Storage if file selected
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `${user.id}-avatar-${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          throw new Error(`Avatar upload failed: ${uploadError.message}`);
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        newAvatarUrl = publicUrl;
+      }
+
+      // Upload banner to Supabase Storage if file selected
+      if (bannerFile) {
+        const fileExt = bannerFile.name.split('.').pop();
+        const fileName = `${user.id}-banner-${Date.now()}.${fileExt}`;
+        const filePath = `banners/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('banners')
+          .upload(filePath, bannerFile, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          throw new Error(`Banner upload failed: ${uploadError.message}`);
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('banners')
+          .getPublicUrl(filePath);
+
+        newBannerUrl = publicUrl;
+      }
+
+      // Update profile in database
+      const changes = {
         display_name: displayName.trim() || null,
         bio: bio.trim() || null,
-        avatar_url: avatarPreview || avatarUrl,
-        banner_url: bannerPreview || bannerUrl,
+        avatar_url: newAvatarUrl,
+        banner_url: newBannerUrl,
       };
 
-      // Simulate save delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error: dbError } = await Profiles.update(user.id, changes);
+
+      if (dbError) {
+        throw new Error(`Profile update failed: ${dbError.message}`);
+      }
+
+      // Refetch updated profile
+      const { data: updatedProfile } = await Profiles.byId(user.id);
 
       if (onSaved) onSaved(updatedProfile);
       if (onClose) onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Unexpected error while saving profile.");
+      setError(err.message || "Unexpected error while saving profile.");
     } finally {
       setSaving(false);
     }

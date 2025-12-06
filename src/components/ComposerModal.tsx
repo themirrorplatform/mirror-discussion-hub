@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useState } from "react";
+import { validateTitle, validateContent, validateVideoUrl, sanitizeTags } from "../lib/sanitize";
 
 interface ComposerModalProps {
   isOpen: boolean;
@@ -20,37 +21,74 @@ export function ComposerModal({ isOpen, onClose, onSubmit }: ComposerModalProps)
   const [paradox, setParadox] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
 
-    const tagArray =
-      tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0) ?? [];
+    // Validate title
+    const titleValidation = validateTitle(title);
+    if (!titleValidation.isValid) {
+      setError(titleValidation.error || "Invalid title");
+      setLoading(false);
+      return;
+    }
 
-    await onSubmit({
-      title,
-      content: body,
-      tags: tagArray,
-      quote: paradox || null,
-      video_url: videoUrl || null,
-    });
+    // Validate content
+    const contentValidation = validateContent(body);
+    if (!contentValidation.isValid) {
+      setError(contentValidation.error || "Invalid content");
+      setLoading(false);
+      return;
+    }
 
-    setLoading(false);
+    // Validate video URL if provided
+    const videoValidation = validateVideoUrl(videoUrl);
+    if (!videoValidation.isValid) {
+      setError(videoValidation.error || "Invalid video URL");
+      setLoading(false);
+      return;
+    }
 
-    // reset
-    setTitle("");
-    setBody("");
-    setTags("");
-    setParadox("");
-    setVideoUrl("");
+    // Validate and sanitize tags
+    const tagArray = sanitizeTags(
+      tags.split(",").map((t) => t.trim()).filter((t) => t.length > 0)
+    );
 
-    onClose();
+    // Validate quote length if provided
+    if (paradox && paradox.trim().length > 500) {
+      setError("Quote must be 500 characters or less");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await onSubmit({
+        title: titleValidation.sanitized,
+        content: contentValidation.sanitized,
+        tags: tagArray,
+        quote: paradox.trim() || null,
+        video_url: videoValidation.sanitized || null,
+      });
+
+      // reset
+      setTitle("");
+      setBody("");
+      setTags("");
+      setParadox("");
+      setVideoUrl("");
+      setError("");
+
+      onClose();
+    } catch (err) {
+      setError("Failed to create reflection. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -152,6 +190,13 @@ export function ComposerModal({ isOpen, onClose, onSubmit }: ComposerModalProps)
               className="w-full px-4 py-3 bg-black border border-[#232323] rounded-lg text-white placeholder:text-[#BDBDBD] focus:outline-none focus:border-[#D6AF36] transition-colors"
             />
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
 
           {/* Submit Button */}
           <button

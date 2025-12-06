@@ -336,11 +336,55 @@ export const Profiles = {
   },
 
   leaderboard() {
+    // Join leaderboard view with profiles to get user data
     return supabase
+      .from("points")
+      .select(`
+        user_id,
+        profiles!points_user_id_fkey (
+          id,
+          display_name,
+          avatar_url,
+          role
+        )
+      `)
+      .order("created_at", { ascending: false });
+  },
+
+  async leaderboardWithProfiles() {
+    // Alternative: Query leaderboard and then fetch profiles
+    const { data: leaderboardData, error: leaderboardError } = await supabase
       .from("leaderboard")
       .select("user_id, score")
       .order("score", { ascending: false })
       .limit(10);
+
+    if (leaderboardError || !leaderboardData) {
+      return { data: null, error: leaderboardError };
+    }
+
+    // Fetch all profiles for leaderboard users
+    const userIds = leaderboardData.map(row => row.user_id);
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url, role")
+      .in("id", userIds);
+
+    if (profilesError) {
+      return { data: null, error: profilesError };
+    }
+
+    // Merge leaderboard with profiles
+    const merged = leaderboardData.map(row => {
+      const profile = profilesData?.find(p => p.id === row.user_id);
+      return {
+        user_id: row.user_id,
+        score: row.score,
+        profile: profile || null,
+      };
+    });
+
+    return { data: merged, error: null };
   },
 };
 

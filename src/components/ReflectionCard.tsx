@@ -6,6 +6,7 @@ import {
   ReflectionActionsCompact,
   ReflectionActionsDropdown,
 } from "./ui/ReflectionCardActions";
+import { sanitizeText } from "../lib/sanitize";
 
 // 🔹 What App will pass into ReflectionCard
 export interface ReflectionCardProps {
@@ -139,6 +140,12 @@ export function ReflectionCard(props: ReflectionCardProps) {
   const rawTimestamp = timestamp || created_at;
   const displayTimestamp = formatRelative(rawTimestamp);
 
+  // Sanitize all user-generated content to prevent XSS
+  const safeTitle = sanitizeText(title);
+  const safeContent = sanitizeText(content);
+  const safeParadox = paradox ? sanitizeText(paradox) : null;
+  const safeAuthorName = sanitizeText(author.name);
+
   return (
     <article className="bg-[#0E0E0E] border border-[#232323] rounded-[14px] p-6 hover:border-[#D6AF36] transition-all duration-200 gold-glow-hover">
       {/* Header: avatar, name, time, actions */}
@@ -146,7 +153,7 @@ export function ReflectionCard(props: ReflectionCardProps) {
         <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-[#D6AF36] flex-shrink-0">
           <img
             src={author.avatar}
-            alt={author.name}
+            alt={safeAuthorName}
             className="w-full h-full object-cover"
           />
         </div>
@@ -154,7 +161,7 @@ export function ReflectionCard(props: ReflectionCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h4 className="text-white text-sm font-medium truncate">
-              {author.name}
+              {safeAuthorName}
             </h4>
             <span className="text-xs text-[#D6AF36]">{author.role}</span>
           </div>
@@ -176,13 +183,13 @@ export function ReflectionCard(props: ReflectionCardProps) {
       </div>
 
       {/* Content */}
-      <h3 className="text-white mb-3">{title}</h3>
-      <p className="text-[#BDBDBD] mb-4 whitespace-pre-wrap">{content}</p>
+      <h3 className="text-white mb-3">{safeTitle}</h3>
+      <p className="text-[#BDBDBD] mb-4 whitespace-pre-wrap">{safeContent}</p>
 
       {/* Paradox (if exists) */}
-      {paradox && (
+      {safeParadox && (
         <div className="mb-4 p-4 border-l-2 border-[#D6AF36] bg-black/30 rounded-r-lg">
-          <p className="text-[#D6AF36] italic font-serif">{paradox}</p>
+          <p className="text-[#D6AF36] italic font-serif">{safeParadox}</p>
         </div>
       )}
 
@@ -194,7 +201,7 @@ export function ReflectionCard(props: ReflectionCardProps) {
               key={index}
               className="px-3 py-1 bg-black/50 border border-[#232323] rounded-full text-sm text-[#D6AF36]"
             >
-              #{tag}
+              #{sanitizeText(tag)}
             </span>
           ))}
         </div>
