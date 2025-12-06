@@ -1,0 +1,22 @@
+node_modules
+build
+dist
+coverage
+.vscode
+.git
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+
+# Database
+*.sql
